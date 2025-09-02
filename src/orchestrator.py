@@ -1,5 +1,5 @@
 """
-Main orchestrator for the Business Transformation Agent.
+Main orchestrator for the Business Transformation Agent with PPT support.
 """
 import logging
 import traceback
@@ -13,6 +13,7 @@ from strands import Agent
 from src.agents.company_research import CompanyResearchSwarm
 from src.agents.report_generator import ConsolidatedReportGenerator
 from src.agents.use_case_generator import DynamicUseCaseGenerator, OutputParser
+from src.agents.ppt_generator import PPTPresentationGenerator
 from src.core.bedrock_manager import EnhancedModelManager
 from src.core.models import CompanyProfile, UseCase, CompanyInfo
 from src.services.web_scraper import WEB_SCRAPING_AVAILABLE
@@ -28,13 +29,14 @@ logger = logging.getLogger(__name__)
 
 
 class AgenticWAFROrchestrator:
-    """Enhanced orchestrator with web scraping, custom prompt processing, file parsing, personalized use case generation, and comprehensive reporting."""
+    """Enhanced orchestrator with web scraping, custom prompt processing, file parsing, personalized use case generation, comprehensive reporting, and PowerPoint presentation generation."""
 
     def __init__(self): 
         self.model_manager = EnhancedModelManager()
         self.research_swarm = CompanyResearchSwarm(self.model_manager)
         self.dynamic_use_case_generator = DynamicUseCaseGenerator(self.model_manager)
         self.consolidated_report_generator = ConsolidatedReportGenerator(self.model_manager)
+        self.ppt_generator = PPTPresentationGenerator(self.model_manager)
         self.session_store = {}
 
         # Add session manager for duplicate prevention
@@ -60,10 +62,10 @@ class AgenticWAFROrchestrator:
                 - Team size and organizational structure implications
              """
         )
-    logger.info("✅ Ocestrator Initialized")
+    logger.info("✅ Orchestrator Initialized with PPT support")
 
     def process_request(self, payload: Dict[str, Any]) -> Dict[str, Any]:
-        """Process transformation request with web scraping, custom prompt, file parsing, personalized use case generation, and consolidated reporting."""
+        """Process transformation request with web scraping, custom prompt, file parsing, personalized use case generation, consolidated reporting, and PowerPoint presentations."""
         try:
             company_name = payload.get('company_name', '').strip()
             company_url = payload.get('company_url', '').strip()
@@ -74,9 +76,29 @@ class AgenticWAFROrchestrator:
             user_id = payload.get('user_id', 'default_user')
             files = payload.get('files', [])  # S3 URLs to PDF/DOCX files
             custom_prompt = payload.get('prompt', '')  # Custom prompt for additional context
+            output_format = payload.get('output_format', 'pdf')  # 'pdf', 'ppt', or 'both'
+            presentation_style = payload.get('presentation_style', 'executive')  # Template style
 
             if not company_name:
                 return {'status': 'error', 'message': 'company_name is required'}
+
+            # Validate output format
+            valid_formats = ['pdf', 'ppt', 'both']
+            if output_format not in valid_formats:
+                return {
+                    'status': 'error', 
+                    'message': f'Invalid output_format. Must be one of: {valid_formats}',
+                    'valid_formats': valid_formats
+                }
+
+            # Validate presentation style
+            valid_styles = ['executive', 'technical', 'marketing', 'strategy']
+            if presentation_style not in valid_styles:
+                return {
+                    'status': 'error',
+                    'message': f'Invalid presentation_style. Must be one of: {valid_styles}',
+                    'valid_styles': valid_styles
+                }
 
             # Default URL if not provided
             if not company_url:
@@ -117,6 +139,8 @@ class AgenticWAFROrchestrator:
                     'session_id': session_id,
                     'project_id': project_id,
                     'user_id': user_id,
+                    'output_format': output_format,
+                    'presentation_style': presentation_style,
                     'files_provided': len(files),
                     'custom_prompt_provided': bool(custom_prompt and custom_prompt.strip()),
                     'web_scraping_enabled': WEB_SCRAPING_AVAILABLE
@@ -182,7 +206,7 @@ class AgenticWAFROrchestrator:
                 # Process the request with status tracking
                 if action == 'start':
                     result = self._handle_start(company_name, company_url, session_id, status_tracker, files,
-                                                project_id, user_id, custom_context)
+                                                project_id, user_id, custom_context, output_format, presentation_style)
                 elif action == 'select_use_cases':
                     result = self._handle_select_use_cases(company_name, company_url, session_id,
                                                            selected_use_case_ids, status_tracker)
@@ -238,11 +262,11 @@ class AgenticWAFROrchestrator:
             }
 
     def _handle_start(self, company_name: str, company_url: str, session_id: str, status_tracker: StatusTracker,
-                      files: List[str], project_id: str, user_id: str, custom_context: Dict[str, str] = None) -> \
-            Dict[str, Any]:
-        """Handle start action with web scraping, custom prompt, file parsing, personalized use case generation, and comprehensive reporting."""
+                      files: List[str], project_id: str, user_id: str, custom_context: Dict[str, str] = None,
+                      output_format: str = 'pdf', presentation_style: str = 'executive') -> Dict[str, Any]:
+        """Handle start action with web scraping, custom prompt, file parsing, personalized use case generation, comprehensive reporting, and PowerPoint presentations."""
         logger.info(
-            f"Starting transformation process for {company_name} with {len(files)} files, custom context: {bool(custom_context)}, and web scraping enabled: {WEB_SCRAPING_AVAILABLE}")
+            f"Starting transformation process for {company_name} with {len(files)} files, custom context: {bool(custom_context)}, output format: {output_format}, and web scraping enabled: {WEB_SCRAPING_AVAILABLE}")
 
         # Parse uploaded files if provided
         parsed_files_content = None
@@ -277,11 +301,26 @@ class AgenticWAFROrchestrator:
             company_profile, research_data, status_tracker, parsed_files_content, custom_context
         )
 
-        # Generate consolidated comprehensive report with web scraping citations
-        report_url = self.consolidated_report_generator.generate_consolidated_report(
-            company_profile, structured_use_cases, research_data, session_id, status_tracker, parsed_files_content,
-            custom_context
-        )
+        # Generate reports/presentations based on format preference
+        report_url = None
+        presentation_url = None
+
+        if output_format in ['pdf', 'both']:
+            # Generate consolidated comprehensive report
+            report_url = self.consolidated_report_generator.generate_consolidated_report(
+                company_profile, structured_use_cases, research_data, session_id, status_tracker, 
+                parsed_files_content, custom_context
+            )
+
+        if output_format in ['ppt', 'both']:
+            # Generate PowerPoint presentation
+            presentation_url = self.ppt_generator.generate_presentation(
+                company_profile, structured_use_cases, research_data, session_id, status_tracker,
+                parsed_files_content, custom_context, presentation_style
+            )
+
+        # Use the appropriate URL for legacy compatibility
+        final_output_url = presentation_url if output_format == 'ppt' else report_url
 
         # Convert to legacy format
         legacy_use_cases = []
@@ -314,11 +353,11 @@ class AgenticWAFROrchestrator:
                 cost_estimate=f"\${structured_uc.monthly_cost_usd}/month",
                 current_implementation=structured_uc.current_state,
                 proposed_solution=structured_uc.proposed_solution,
-                url=report_url or ""  # Add report URL to each use case
+                url=final_output_url or ""
             )
             legacy_use_cases.append(legacy_uc)
 
-        # Store session data
+        # Store session data with both URLs
         self.session_store[session_id] = {
             'company_name': company_name,
             'company_url': company_url,
@@ -328,6 +367,9 @@ class AgenticWAFROrchestrator:
             'legacy_use_cases': legacy_use_cases,
             'dynamic_use_case_ids': available_use_case_ids,
             'report_url': report_url,
+            'presentation_url': presentation_url,
+            'output_format': output_format,
+            'presentation_style': presentation_style,
             'project_id': project_id,
             'user_id': user_id,
             'files_processed': len(files) if files else 0,
@@ -348,11 +390,20 @@ class AgenticWAFROrchestrator:
 
         enhancement_note = f" (Enhanced with {' and '.join(enhancement_notes)})" if enhancement_notes else ""
 
+        # Prepare output URLs
+        output_urls = {}
+        if report_url:
+            output_urls['pdf_report'] = report_url
+        if presentation_url:
+            output_urls['ppt_presentation'] = presentation_url
+
         return {
             "status": "use_cases_generated",
             "session_id": session_id,
             "project_id": project_id,
             "user_id": user_id,
+            "output_format": output_format,
+            "presentation_style": presentation_style,
             "company_profile": asdict(self._convert_profile_to_legacy(company_profile)),
             "structured_company_profile": asdict(company_profile),
             "research_metadata": {
@@ -375,6 +426,9 @@ class AgenticWAFROrchestrator:
             "available_use_case_ids": available_use_case_ids,
             "total_use_cases": len(structured_use_cases),
             "report_url": report_url,
+            "presentation_url": presentation_url,
+            "final_output_url": final_output_url,
+            "output_urls": output_urls,
             "custom_context_summary": {
                 "context_type": custom_context.get('context_type') if custom_context else None,
                 "focus_areas": custom_context.get('focus_areas') if custom_context else [],
@@ -388,7 +442,7 @@ class AgenticWAFROrchestrator:
                 "successful_scrapes": research_data.get('successful_web_scrapes', 0),
                 "method": "google_search_with_beautiful_soup"
             },
-            "message": f"Generated {len(structured_use_cases)} transformation use cases for {company_name}{enhancement_note}. Report provides comprehensive analysis of ALL use cases with enhanced formatting and strategic recommendations.",
+            "message": f"Generated {len(structured_use_cases)} transformation use cases for {company_name}{enhancement_note}. {self._get_output_message(output_format, report_url, presentation_url)}",
             "next_action": "select_use_cases",
             "instructions": f"Select use case IDs from 'available_use_case_ids' for WAFR assessment",
             "status_tracking": {
@@ -405,21 +459,23 @@ class AgenticWAFROrchestrator:
                     StatusCheckpoints.AGENT_ANALYZING,
                     StatusCheckpoints.USE_CASES_GENERATING,
                     StatusCheckpoints.USE_CASES_GENERATED,
-                    StatusCheckpoints.REPORT_GENERATION_STARTED,
-                    StatusCheckpoints.REPORT_GENERATION_COMPLETED
+                    StatusCheckpoints.REPORT_GENERATION_STARTED if report_url else "skipped",
+                    StatusCheckpoints.REPORT_GENERATION_COMPLETED if report_url else "skipped",
+                    StatusCheckpoints.PPT_GENERATION_STARTED if presentation_url else "skipped",
+                    StatusCheckpoints.PPT_GENERATION_COMPLETED if presentation_url else "skipped"
                 ],
-                "processing_method": "web_scraping_with_custom_context_and_file_integration_enhanced_formatting"
+                "processing_method": f"web_scraping_with_custom_context_and_file_integration_{output_format}_output"
             }
         }
 
     def _handle_select_use_cases(self, company_name: str, company_url: str, session_id: str,
                                  selected_use_case_ids: List[str], status_tracker: StatusTracker) -> Dict[str, Any]:
-        """Handle use case selection with personalized context."""
+        """Handle use case selection with PPT support."""
 
         if not selected_use_case_ids:
             return {'status': 'error', 'message': 'No transformation use cases selected'}
 
-        # Update status for WAFR assessment start
+        # Update status for assessment start
         status_tracker.update_status(
             StatusCheckpoints.WAFR_ASSESSMENT_STARTED,
             {
@@ -428,7 +484,7 @@ class AgenticWAFROrchestrator:
             }
         )
 
-        # For this integrated version, we'll return a success with the report URL
+        # Get session data
         session_data = self.session_store.get(session_id)
         if not session_data:
             return {'status': 'error', 'message': 'Session not found. Please start with action: "start"'}
@@ -437,6 +493,9 @@ class AgenticWAFROrchestrator:
         legacy_use_cases = session_data['legacy_use_cases']
         context_aligned_ids = session_data.get('dynamic_use_case_ids', [])
         report_url = session_data.get('report_url', '')
+        presentation_url = session_data.get('presentation_url', '')
+        output_format = session_data.get('output_format', 'pdf')
+        presentation_style = session_data.get('presentation_style', 'executive')
         project_id = session_data.get('project_id')
         user_id = session_data.get('user_id')
         files_processed = session_data.get('files_processed', 0)
@@ -463,7 +522,9 @@ class AgenticWAFROrchestrator:
             StatusCheckpoints.COMPLETED,
             {
                 'selected_use_cases_processed': True,
+                'output_format': output_format,
                 'report_available': bool(report_url),
+                'presentation_available': bool(presentation_url),
                 'custom_context_used': bool(custom_context),
                 'web_enhanced': bool(research_data.get('web_research_data'))
             }
@@ -472,22 +533,37 @@ class AgenticWAFROrchestrator:
         # Update session with selected use cases
         self.session_store[session_id]['selected_use_case_ids'] = valid_selected_ids
 
+        # Prepare output URLs
+        output_urls = {}
+        if report_url:
+            output_urls['pdf_report'] = report_url
+        if presentation_url:
+            output_urls['ppt_presentation'] = presentation_url
+
         return {
             'status': 'completed',
             'session_id': session_id,
             'project_id': project_id,
             'user_id': user_id,
+            'output_format': output_format,
+            'presentation_style': presentation_style if output_format in ['ppt', 'both'] else None,
             'company_profile': asdict(self._convert_profile_to_legacy(company_profile)),
             'selected_use_case_ids': valid_selected_ids,
             'selected_use_cases': [asdict(uc) for uc in selected_use_cases],
             'report_url': report_url,
+            'presentation_url': presentation_url,
+            'output_urls': output_urls,
             'business_transformation_summary': {
-                'method': 'transformation_assessment_with_consolidated_report_and_web_scraping',
+                'method': f'transformation_assessment_with_{output_format}_output_and_web_scraping',
                 'company_aligned_use_cases': True,
                 'web_enhanced_analysis': bool(research_data.get('web_research_data')),
                 'file_enhanced_analysis': files_processed > 0,
                 'custom_context_alignment': bool(custom_context),
-                'consolidated_report_generated': bool(report_url),
+                'outputs_generated': {
+                    'pdf_report': bool(report_url),
+                    'ppt_presentation': bool(presentation_url),
+                    'editable_formats': True
+                },
                 'comprehensive_use_case_analysis': True,
                 'enhanced_formatting': True
             },
@@ -495,7 +571,7 @@ class AgenticWAFROrchestrator:
                 'enabled': WEB_SCRAPING_AVAILABLE,
                 'urls_scraped': len(research_data.get('urls_scraped', [])),
                 'successful_scrapes': research_data.get('successful_web_scrapes', 0),
-                'citations_in_report': True
+                'citations_in_outputs': True
             },
             'custom_context_summary': {
                 'context_type': custom_context.get('context_type') if custom_context else None,
@@ -505,16 +581,17 @@ class AgenticWAFROrchestrator:
             'status_tracking': {
                 'checkpoints_completed': [
                     StatusCheckpoints.USE_CASES_GENERATED,
-                    StatusCheckpoints.REPORT_GENERATION_COMPLETED,
+                    StatusCheckpoints.REPORT_GENERATION_COMPLETED if report_url else "skipped",
+                    StatusCheckpoints.PPT_GENERATION_COMPLETED if presentation_url else "skipped",
                     StatusCheckpoints.COMPLETED
                 ],
                 'final_status': StatusCheckpoints.COMPLETED,
-                'processing_method': 'web_scraping_with_custom_context_and_file_integration_enhanced_formatting'
+                'processing_method': f'web_scraping_with_custom_context_and_file_integration_{output_format}_output'
             }
         }
 
     def _handle_fetch(self, company_name: str, company_url: str, fetch_type: str, **kwargs) -> Dict[str, Any]:
-        """Enhanced fetch action with better error handling."""
+        """Enhanced fetch action with better error handling and PPT support."""
         try:
             logger.info(f"Fetching {fetch_type} for {company_name} at {company_url}")
 
@@ -538,7 +615,8 @@ class AgenticWAFROrchestrator:
                         StatusCheckpoints.COMPLETED,
                         StatusCheckpoints.ERROR,
                         StatusCheckpoints.USE_CASES_GENERATED,
-                        StatusCheckpoints.REPORT_GENERATION_COMPLETED
+                        StatusCheckpoints.REPORT_GENERATION_COMPLETED,
+                        StatusCheckpoints.PPT_GENERATION_COMPLETED
                     ],
                     'next_poll_seconds': 5,
                     'timestamp': datetime.now().isoformat()
@@ -568,7 +646,7 @@ class AgenticWAFROrchestrator:
             }
 
     def _fetch_use_cases_enhanced(self, company_name: str, company_url: str) -> Dict[str, Any]:
-        """Enhanced use cases fetch with web scraping and custom context integration."""
+        """Enhanced use cases fetch with web scraping, custom context integration, and PPT support."""
 
         # Strategy 1: Check session store
         matching_sessions = []
@@ -589,12 +667,16 @@ class AgenticWAFROrchestrator:
 
                 custom_context = session_data.get('custom_context')
                 research_data = session_data.get('research_data', {})
+                output_format = session_data.get('output_format', 'pdf')
+                presentation_style = session_data.get('presentation_style', 'executive')
 
                 return {
                     'status': 'found_cached_use_cases',
                     'session_id': session_id,
                     'company_name': company_name,
                     'company_url': company_url,
+                    'output_format': output_format,
+                    'presentation_style': presentation_style,
                     'company_profile': asdict(
                         self._convert_profile_to_legacy(session_data['company_profile'])) if session_data.get(
                         'company_profile') else {},
@@ -602,6 +684,11 @@ class AgenticWAFROrchestrator:
                     'available_use_case_ids': session_data.get('dynamic_use_case_ids', []),
                     'total_use_cases': len(session_data.get('structured_use_cases', [])),
                     'report_url': session_data.get('report_url', ''),
+                    'presentation_url': session_data.get('presentation_url', ''),
+                    'output_urls': {
+                        'pdf_report': session_data.get('report_url', ''),
+                        'ppt_presentation': session_data.get('presentation_url', '')
+                    },
                     'files_processed': session_data.get('files_processed', 0),
                     'custom_context_used': bool(custom_context),
                     'custom_context_type': custom_context.get('context_type') if custom_context else None,
@@ -613,15 +700,13 @@ class AgenticWAFROrchestrator:
                     },
                     'cached_timestamp': session_data.get('timestamp'),
                     'message': f"Retrieved cached transformation use cases for {company_name}" +
-                               (
-                                   f" (enhanced with {session_data.get('files_processed', 0)} files)" if session_data.get(
-                                       'files_processed', 0) > 0 else "") +
-                               (
-                                   f" (custom context: {custom_context.get('context_type', 'general')})" if custom_context else "") +
-                               (
-                                   f" (web scraping: {research_data.get('successful_web_scrapes', 0)} sources)" if research_data.get(
-                                       'successful_web_scrapes', 0) > 0 else "") +
-                               " - Report includes comprehensive analysis of ALL use cases with enhanced formatting",
+                               (f" (enhanced with {session_data.get('files_processed', 0)} files)" if session_data.get(
+                                   'files_processed', 0) > 0 else "") +
+                               (f" (custom context: {custom_context.get('context_type', 'general')})" if custom_context else "") +
+                               (f" (web scraping: {research_data.get('successful_web_scrapes', 0)} sources)" if research_data.get(
+                                   'successful_web_scrapes', 0) > 0 else "") +
+                               f" - Generated in {output_format.upper()} format" +
+                               (f" ({presentation_style} style)" if output_format in ['ppt', 'both'] else ""),
                     'next_action': "select_use_cases",
                     'timestamp': datetime.now().isoformat()
                 }
@@ -651,46 +736,50 @@ class AgenticWAFROrchestrator:
             'company_name': company_name,
             'company_url': company_url,
             'message': f'No cached transformation use cases found for {company_name}',
-            'suggestion': 'Use action: "start" to generate new use cases with optional custom prompt, file upload, and web scraping',
+            'suggestion': 'Use action: "start" with output_format: "pdf", "ppt", or "both"',
             'available_actions': ['start'],
+            'available_formats': ['pdf', 'ppt', 'both'],
+            'available_styles': ['executive', 'technical', 'marketing', 'strategy'],
             'web_scraping_enabled': WEB_SCRAPING_AVAILABLE,
             'timestamp': datetime.now().isoformat()
         }
 
     def _fetch_wafr_report_enhanced(self, company_name: str, company_url: str,
                                     selected_use_case_ids: List[str] = None) -> Dict[str, Any]:
-        """Enhanced consolidated report fetch with web scraping and custom context integration."""
+        """Enhanced consolidated report fetch with PPT support."""
 
-        # Check session store for reports
-        matching_report_sessions = []
+        # Check session store for reports and presentations
+        matching_sessions = []
         for session_id, session_data in self.session_store.items():
             try:
                 if (session_data.get('company_name', '').lower() == company_name.lower() and
                         session_data.get('company_url', '') == company_url and
-                        'report_url' in session_data):
-                    matching_report_sessions.append((session_id, session_data))
+                        (session_data.get('report_url') or session_data.get('presentation_url'))):
+                    matching_sessions.append((session_id, session_data))
             except Exception as e:
-                logger.warning(f"Error checking report session {session_id}: {e}")
+                logger.warning(f"Error checking session {session_id}: {e}")
                 continue
 
-        if matching_report_sessions:
-            # Return matching reports
-            reports = []
-            for session_id, session_data in matching_report_sessions:
+        if matching_sessions:
+            # Return matching reports and presentations
+            outputs = []
+            for session_id, session_data in matching_sessions:
                 try:
                     files_processed = session_data.get('files_processed', 0)
                     custom_context = session_data.get('custom_context')
                     research_data = session_data.get('research_data', {})
+                    output_format = session_data.get('output_format', 'pdf')
+                    presentation_style = session_data.get('presentation_style', 'executive')
 
-                    report_info = {
+                    output_info = {
                         'session_id': session_id,
-                        'report_url': session_data.get('report_url', ''),
                         'company_name': company_name,
                         'company_url': company_url,
+                        'output_format': output_format,
+                        'presentation_style': presentation_style,
                         'use_case_count': len(session_data.get('structured_use_cases', [])),
                         'available_use_case_ids': session_data.get('dynamic_use_case_ids', []),
                         'created_at': session_data.get('timestamp'),
-                        'report_type': 'comprehensive_analysis_with_enhanced_formatting_and_web_citations',
                         'files_processed': files_processed,
                         'file_enhanced': files_processed > 0,
                         'custom_context_used': bool(custom_context),
@@ -701,50 +790,68 @@ class AgenticWAFROrchestrator:
                             'urls_scraped': len(research_data.get('urls_scraped', [])),
                             'successful_scrapes': research_data.get('successful_web_scrapes', 0),
                             'citations_included': True
-                        },
-                        'comprehensive_use_case_analysis': True,
-                        'enhanced_formatting': True
+                        }
                     }
-                    reports.append(report_info)
+
+                    # Add URLs based on what's available
+                    if session_data.get('report_url'):
+                        output_info['report_url'] = session_data['report_url']
+                        output_info['report_type'] = 'comprehensive_pdf_analysis'
+
+                    if session_data.get('presentation_url'):
+                        output_info['presentation_url'] = session_data['presentation_url']
+                        output_info['presentation_type'] = f'{presentation_style}_powerpoint_editable'
+
+                    # Add combined output URLs
+                    output_info['output_urls'] = {
+                        'pdf_report': session_data.get('report_url', ''),
+                        'ppt_presentation': session_data.get('presentation_url', '')
+                    }
+
+                    outputs.append(output_info)
                 except Exception as e:
-                    logger.warning(f"Error processing report for session {session_id}: {e}")
+                    logger.warning(f"Error processing session {session_id}: {e}")
                     continue
 
             # Sort by creation date (most recent first)
-            reports.sort(key=lambda x: x.get('created_at', ''), reverse=True)
+            outputs.sort(key=lambda x: x.get('created_at', ''), reverse=True)
 
             return {
-                'status': 'found_cached_reports',
+                'status': 'found_cached_outputs',
                 'company_name': company_name,
                 'company_url': company_url,
-                'total_reports': len(reports),
-                'reports': reports,
-                'latest_report': reports[0] if reports else None,
-                'message': f"Retrieved {len(reports)} consolidated report(s) with enhanced formatting, comprehensive use case analysis and web citations for {company_name}",
+                'total_outputs': len(outputs),
+                'outputs': outputs,
+                'latest_output': outputs[0] if outputs else None,
+                'message': f"Retrieved {len(outputs)} output(s) for {company_name} - includes PDF reports and/or PowerPoint presentations",
                 'available_actions': ['start', 'select_use_cases'],
+                'available_formats': ['pdf', 'ppt', 'both'],
+                'available_styles': ['executive', 'technical', 'marketing', 'strategy'],
                 'web_scraping_enabled': WEB_SCRAPING_AVAILABLE,
                 'timestamp': datetime.now().isoformat()
             }
 
         return {
-            'status': 'no_cached_reports',
+            'status': 'no_cached_outputs',
             'company_name': company_name,
             'company_url': company_url,
-            'message': f'No consolidated reports found for {company_name}',
-            'suggestion': 'Use action: "start" to begin the transformation process with optional custom prompt, file upload, and web scraping',
+            'message': f'No cached outputs found for {company_name}',
+            'suggestion': 'Use action: "start" with output_format: "pdf", "ppt", or "both"',
             'available_actions': ['start'],
+            'available_formats': ['pdf', 'ppt', 'both'],
+            'available_styles': ['executive', 'technical', 'marketing', 'strategy'],
             'web_scraping_enabled': WEB_SCRAPING_AVAILABLE,
             'timestamp': datetime.now().isoformat()
         }
 
     def _fetch_all_data_enhanced(self, company_name: str, company_url: str) -> Dict[str, Any]:
-        """Enhanced fetch all data with web scraping and custom context integration."""
+        """Enhanced fetch all data with PPT support."""
 
         # Get use cases
         use_cases_result = self._fetch_use_cases_enhanced(company_name, company_url)
 
-        # Get reports
-        reports_result = self._fetch_wafr_report_enhanced(company_name, company_url)
+        # Get reports and presentations
+        outputs_result = self._fetch_wafr_report_enhanced(company_name, company_url)
 
         # Compile comprehensive response
         all_sessions = []
@@ -754,15 +861,25 @@ class AgenticWAFROrchestrator:
                     files_processed = session_data.get('files_processed', 0)
                     custom_context = session_data.get('custom_context')
                     research_data = session_data.get('research_data', {})
+                    output_format = session_data.get('output_format', 'pdf')
+                    presentation_style = session_data.get('presentation_style', 'executive')
 
                     session_summary = {
                         'session_id': session_id,
                         'timestamp': session_data.get('timestamp'),
+                        'output_format': output_format,
+                        'presentation_style': presentation_style,
                         'has_use_cases': 'structured_use_cases' in session_data,
-                        'has_report': 'report_url' in session_data,
+                        'has_report': bool(session_data.get('report_url')),
+                        'has_presentation': bool(session_data.get('presentation_url')),
                         'use_case_count': len(session_data.get('structured_use_cases', [])),
                         'selected_use_cases': session_data.get('selected_use_case_ids', []),
                         'report_url': session_data.get('report_url', ''),
+                        'presentation_url': session_data.get('presentation_url', ''),
+                        'output_urls': {
+                            'pdf_report': session_data.get('report_url', ''),
+                            'ppt_presentation': session_data.get('presentation_url', '')
+                        },
                         'files_processed': files_processed,
                         'file_enhanced': files_processed > 0,
                         'custom_context_used': bool(custom_context),
@@ -774,9 +891,7 @@ class AgenticWAFROrchestrator:
                             'successful_scrapes': research_data.get('successful_web_scrapes', 0)
                         },
                         'company_profile': asdict(
-                            session_data.get('company_profile')) if session_data.get('company_profile') else None,
-                        'comprehensive_use_case_analysis': True,
-                        'enhanced_formatting': True
+                            session_data.get('company_profile')) if session_data.get('company_profile') else None
                     }
                     all_sessions.append(session_summary)
             except Exception as e:
@@ -794,14 +909,16 @@ class AgenticWAFROrchestrator:
                 'total_sessions': len(all_sessions),
                 'sessions_summary': all_sessions,
                 'use_cases_status': use_cases_result.get('status'),
-                'reports_status': reports_result.get('status'),
+                'outputs_status': outputs_result.get('status'),
                 'detailed_use_cases': use_cases_result if use_cases_result.get(
                     'status') == 'found_cached_use_cases' else None,
-                'detailed_reports': reports_result if reports_result.get(
-                    'status') == 'found_cached_reports' else None,
+                'detailed_outputs': outputs_result if outputs_result.get(
+                    'status') == 'found_cached_outputs' else None,
                 'latest_session': all_sessions[0] if all_sessions else None,
-                'message': f"Retrieved all cached transformation data for {company_name} ({len(all_sessions)} sessions) with enhanced formatting and comprehensive use case analysis",
+                'message': f"Retrieved all cached data for {company_name} ({len(all_sessions)} sessions) with PDF and PowerPoint outputs",
                 'available_actions': ['start', 'select_use_cases'],
+                'available_formats': ['pdf', 'ppt', 'both'],
+                'available_styles': ['executive', 'technical', 'marketing', 'strategy'],
                 'web_scraping_enabled': WEB_SCRAPING_AVAILABLE,
                 'timestamp': datetime.now().isoformat()
             }
@@ -810,9 +927,11 @@ class AgenticWAFROrchestrator:
             'status': 'no_cached_data',
             'company_name': company_name,
             'company_url': company_url,
-            'message': f'No cached transformation data found for {company_name}',
-            'suggestion': 'Use action: "start" to begin the transformation process with optional custom prompt, file upload, and web scraping',
+            'message': f'No cached data found for {company_name}',
+            'suggestion': 'Use action: "start" with output_format: "pdf", "ppt", or "both"',
             'available_actions': ['start'],
+            'available_formats': ['pdf', 'ppt', 'both'],
+            'available_styles': ['executive', 'technical', 'marketing', 'strategy'],
             'web_scraping_enabled': WEB_SCRAPING_AVAILABLE,
             'timestamp': datetime.now().isoformat()
         }
@@ -954,3 +1073,14 @@ Ensure profile extraction aligns with these custom requirements and focus areas.
             business_model=profile.business_model,
             additional_context=f"Transformation readiness: {profile.cloud_maturity}, Business stage: {profile.growth_stage}"
         )
+
+    def _get_output_message(self, output_format: str, report_url: str, presentation_url: str) -> str:
+        """Generate appropriate message based on output format."""
+        if output_format == 'both':
+            pdf_status = "PDF report available" if report_url else "PDF generation failed"
+            ppt_status = "PowerPoint presentation available" if presentation_url else "PowerPoint generation failed"
+            return f"Generated both {pdf_status.lower()} and {ppt_status.lower()}."
+        elif output_format == 'ppt':
+            return f"Generated PowerPoint presentation{' ready for download and editing' if presentation_url else ' generation failed'}."
+        else:
+            return f"Generated PDF report{' with comprehensive analysis' if report_url else ' generation failed'}."

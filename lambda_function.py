@@ -1,5 +1,5 @@
 """
-Bare minimum Lambda handler.
+Bare minimum Lambda handler with PPT support.
 """
 
 # 🔧 Set EFS package path FIRST, before any imports
@@ -24,7 +24,8 @@ logger = logging.getLogger(__name__)
 def lambda_handler(event, context):
     """
     AWS Lambda handler with web scraping, custom prompt processing, file parsing, 
-    personalized transformation, caching, status tracking, and consolidated report generation.
+    personalized transformation, caching, status tracking, consolidated report generation,
+    and PowerPoint presentation support.
     """
     try:
         # Parse request body
@@ -39,6 +40,53 @@ def lambda_handler(event, context):
         
         if body.get('files'):
             logger.info(f"Files provided: {len(body['files'])} files")
+
+        # Log output format and presentation style if available
+        if body.get('output_format'):
+            logger.info(f"Output format requested: {body['output_format']}")
+
+        if body.get('presentation_style'):
+            logger.info(f"Presentation style requested: {body['presentation_style']}")
+
+        # Add validation for output format
+        valid_output_formats = ['pdf', 'ppt', 'both']
+        if body.get('output_format') and body['output_format'] not in valid_output_formats:
+            return {
+                'statusCode': 400,
+                'headers': {
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
+                    'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+                },
+                'body': json.dumps({
+                    'status': 'error',
+                    'message': f'Invalid output_format. Must be one of: {valid_output_formats}',
+                    'valid_formats': valid_output_formats,
+                    'provided_format': body.get('output_format'),
+                    'timestamp': datetime.now().isoformat()
+                })
+            }
+
+        # Add validation for presentation style
+        valid_presentation_styles = ['executive', 'technical', 'marketing', 'strategy']
+        if body.get('presentation_style') and body['presentation_style'] not in valid_presentation_styles:
+            return {
+                'statusCode': 400,
+                'headers': {
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
+                    'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+                },
+                'body': json.dumps({
+                    'status': 'error',
+                    'message': f'Invalid presentation_style. Must be one of: {valid_presentation_styles}',
+                    'valid_styles': valid_presentation_styles,
+                    'provided_style': body.get('presentation_style'),
+                    'timestamp': datetime.now().isoformat()
+                })
+            }
 
         # Handle polling action
         if body.get('action') == 'fetch' and body.get('fetch_type') == 'status':
@@ -64,7 +112,8 @@ def lambda_handler(event, context):
                             StatusCheckpoints.COMPLETED,
                             StatusCheckpoints.ERROR,
                             StatusCheckpoints.USE_CASES_GENERATED,
-                            StatusCheckpoints.REPORT_GENERATION_COMPLETED
+                            StatusCheckpoints.REPORT_GENERATION_COMPLETED,
+                            StatusCheckpoints.PPT_GENERATION_COMPLETED
                         ]
                     }, default=str)
                 }
@@ -87,13 +136,29 @@ def lambda_handler(event, context):
                 }
 
         # Run orchestrator
-        logger.info(f"Cache miss for key: {cache_key}, processing transformation request.")
+        logger.info(f"Cache miss for key: {cache_key}, processing transformation request with output format: {body.get('output_format', 'pdf')}")
         orchestrator = AgenticWAFROrchestrator()
         result = orchestrator.process_request(body)
 
-        # Cache result
+        # Cache result (but not status polls)
         if body.get('action') != 'fetch' or body.get('fetch_type') != 'status':
             CacheManager.save_to_cache(cache_key, body, result)
+
+        # Log successful completion with format info
+        if result.get('status') in ['use_cases_generated', 'completed']:
+            output_format = result.get('output_format', 'pdf')
+            report_url = result.get('report_url')
+            presentation_url = result.get('presentation_url')
+            
+            success_message = f"Successfully processed request with {output_format} output:"
+            if output_format == 'both':
+                success_message += f" PDF {'✅' if report_url else '❌'}, PPT {'✅' if presentation_url else '❌'}"
+            elif output_format == 'ppt':
+                success_message += f" PPT {'✅' if presentation_url else '❌'}"
+            else:
+                success_message += f" PDF {'✅' if report_url else '❌'}"
+            
+            logger.info(success_message)
 
         return {
             'statusCode': 200,
@@ -110,6 +175,21 @@ def lambda_handler(event, context):
         logger.error(f"Lambda handler error: {e}")
         logger.error(traceback.format_exc())
         
+        # Enhanced error response with format context
+        error_context = {}
+        try:
+            if isinstance(event.get('body'), str):
+                body = json.loads(event['body'])
+            else:
+                body = event.get('body', event)
+            
+            if body.get('output_format'):
+                error_context['requested_output_format'] = body['output_format']
+            if body.get('presentation_style'):
+                error_context['requested_presentation_style'] = body['presentation_style']
+        except:
+            pass
+        
         return {
             'statusCode': 500,
             'headers': {
@@ -120,6 +200,7 @@ def lambda_handler(event, context):
                 'status': 'error',
                 'message': str(e),
                 'error_type': type(e).__name__,
-                'timestamp': datetime.now().isoformat()
+                'timestamp': datetime.now().isoformat(),
+                **error_context
             })
         }
