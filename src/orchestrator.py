@@ -993,73 +993,73 @@ class AgenticWAFROrchestrator:
         logger.warning("No content could be extracted from any files")
         return None
 
-    def _extract_company_profile(self, company_name: str, company_url: str, research_data: Dict[str, Any],
-                                 parsed_files_content: str = None,
-                                 custom_context: Dict[str, str] = None) -> CompanyProfile:
-        """Extract structured company profile from business research with web scraping, custom context and file content integration."""
-
-        web_context = ""
-        if research_data.get('web_research_data', {}).get('research_content'):
-            web_context = f"""
-            
+def _extract_company_profile(self, company_name: str, company_url: str, research_data: Dict[str, Any],
+                             parsed_files_content: str = None,
+                             custom_context: Dict[str, str] = None) -> CompanyProfile:
+    """Extract structured company profile from business research with error handling."""
+    
+    # FIX: Add null check for research_data
+    if research_data is None:
+        research_data = {}
+    
+    web_context = ""
+    web_research_data = research_data.get('web_research_data', {})
+    if web_research_data and web_research_data.get('research_content'):
+        web_context = f"""
+        
 WEB INTELLIGENCE ANALYSIS:
-Based on web scraping of {research_data['web_research_data'].get('successful_scrapes', 0)} sources:
+Based on web scraping of {web_research_data.get('successful_scrapes', 0)} sources:
 
-{research_data['web_research_data']['research_content'][:2000]}
+{web_research_data['research_content'][:2000]}
 
 Use this market intelligence to understand their competitive position and industry context.
-            """
+        """
 
-        file_context = ""
-        if parsed_files_content:
-            file_context = f"""
-            
+    file_context = ""
+    if parsed_files_content:
+        file_context = f"""
+        
 COMPANY DOCUMENT ANALYSIS:
 The following content was extracted from company documents:
 
 {parsed_files_content[:2000]}
 
-Use this as primary intelligence to understand their actual operations, departments, processes, products, and strategic context.
-            """
+Use this as primary intelligence to understand their actual operations.
+        """
 
-        custom_context_section = ""
-        if custom_context and custom_context.get('processed_prompt'):
-            custom_context_section = f"""
-            
+    custom_context_section = ""
+    if custom_context and custom_context.get('processed_prompt'):
+        custom_context_section = f"""
+        
 CUSTOM CONTEXT REQUIREMENTS:
 {custom_context['processed_prompt'][:1000]}
 
 Focus Areas: {', '.join(custom_context.get('focus_areas', []))}
-Context Type: {custom_context.get('context_type', 'general')}
-
-Ensure profile extraction aligns with these custom requirements and focus areas.
-            """
-
-        extraction_prompt = f"""
-        Extract strategic business profile from comprehensive research data:
-        
-        COMPANY: {company_name}
-        URL: {company_url}
-        
-        BUSINESS RESEARCH DATA:
-        {research_data.get('research_findings', '')[:2000]}
-        {web_context}
-        {file_context}
-        {custom_context_section}
-        
-        Analyze and extract key business intelligence naturally based on the provided context and research data.
-        Focus on understanding their actual business operations, strategic challenges, and transformation opportunities.
         """
 
-        try:
-            response = self.profile_extractor(extraction_prompt)
-            response_text = str(response)
+    extraction_prompt = f"""
+    Extract strategic business profile from comprehensive research data:
+    
+    COMPANY: {company_name}
+    URL: {company_url}
+    
+    BUSINESS RESEARCH DATA:
+    {research_data.get('research_findings', 'Standard business analysis')[:2000]}
+    {web_context}
+    {file_context}
+    {custom_context_section}
+    
+    Analyze and extract key business intelligence based on the provided context.
+    """
 
-            return OutputParser.parse_company_profile(response_text, company_name)
+    try:
+        response = self.profile_extractor(extraction_prompt)
+        response_text = str(response)
+        return OutputParser.parse_company_profile(response_text, company_name)
 
-        except Exception as e:
-            logger.error(f"Error extracting business profile: {e}")
-            return OutputParser.parse_company_profile("", company_name)
+    except Exception as e:
+        logger.error(f"Error extracting business profile: {e}")
+        return OutputParser.parse_company_profile("", company_name)
 
     def _convert_profile_to_legacy(self, profile: CompanyProfile) -> CompanyInfo:
         """Convert structured profile to legacy format with business context."""

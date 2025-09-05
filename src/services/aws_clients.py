@@ -1,70 +1,68 @@
 """
-Mock AWS clients for local testing.
+Real AWS clients for Bedrock integration with proper session export
 """
 import os
+import boto3
 import logging
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
-# Mock session
-class MockSession:
-    def __init__(self, region_name='us-east-1'):
-        self.region_name = region_name
+# Real AWS session - this is what bedrock_manager.py imports
+session = boto3.Session()
 
-session = MockSession()
+# Real DynamoDB
+dynamodb = boto3.resource('dynamodb')
 
-# Mock DynamoDB
+# Real S3 client  
+s3_client = boto3.client('s3')
+
+# Environment variables
+CACHE_TABLE_NAME = os.environ.get('CACHE_TABLE_NAME', 'transformation-cache')
+STATUS_TABLE_NAME = os.environ.get('STATUS_TABLE_NAME', 'transformation-status') 
+S3_BUCKET = os.environ.get('S3_BUCKET', 'transformation-outputs')
+LAMBDA_TMP_DIR = '/tmp' if os.path.exists('/tmp') else os.path.join(os.path.dirname(__file__), '..', '..', 'tmp')
+
+# Create tmp directory
+os.makedirs(LAMBDA_TMP_DIR, exist_ok=True)
+
+# Mock table class for when DynamoDB tables don't exist
 class MockTable:
     def __init__(self, table_name):
         self.table_name = table_name
-        self._data = {}
-    
+        logger.info(f"Using mock table for {table_name} (table doesn't exist)")
+        
     def put_item(self, Item):
-        logger.info(f"Mock DynamoDB put_item: {self.table_name}")
+        logger.info(f"Mock put_item to {self.table_name}")
         return {'ResponseMetadata': {'HTTPStatusCode': 200}}
-    
+        
     def get_item(self, Key):
-        logger.info(f"Mock DynamoDB get_item: {self.table_name}")
+        logger.info(f"Mock get_item from {self.table_name}")
         return {'ResponseMetadata': {'HTTPStatusCode': 200}}
 
-class MockDynamoDB:
-    def Table(self, table_name):
-        return MockTable(table_name)
+# Try to use real DynamoDB tables, fall back to mock if they don't exist
+try:
+    cache_table = dynamodb.Table(CACHE_TABLE_NAME)
+    cache_table.load()  # Test if table exists
+    logger.info(f"✅ Connected to real DynamoDB cache table: {CACHE_TABLE_NAME}")
+except Exception as e:
+    logger.warning(f"Cache table {CACHE_TABLE_NAME} not accessible: {e}")
+    cache_table = MockTable(CACHE_TABLE_NAME)
 
-dynamodb = MockDynamoDB()
-
-# Mock S3
-class MockS3Client:
-    def upload_file(self, local_path, bucket, key, ExtraArgs=None):
-        logger.info(f"Mock S3 upload: {local_path} -> s3://{bucket}/{key}")
-        # Instead of S3, save with a local prefix
-        local_save_path = f"output_{os.path.basename(local_path)}"
-        if os.path.exists(local_path):
-            import shutil
-            shutil.copy2(local_path, local_save_path)
-            logger.info(f"File saved locally as: {local_save_path}")
-        return True
-
-s3_client = MockS3Client()
-
-# Environment variables
-CACHE_TABLE_NAME = os.environ.get('CACHE_TABLE_NAME', 'MockCache')
-STATUS_TABLE_NAME = os.environ.get('STATUS_TABLE_NAME', 'MockStatus')
-S3_BUCKET = os.environ.get('S3_BUCKET', 'mock-bucket')
-LAMBDA_TMP_DIR = os.path.join(os.path.dirname(__file__), '..', 'output')
-
-# Create output directory
-os.makedirs(LAMBDA_TMP_DIR, exist_ok=True)
-
-# Mock table instances
-cache_table = MockTable(CACHE_TABLE_NAME)
-status_table = MockTable(STATUS_TABLE_NAME)
+try:
+    status_table = dynamodb.Table(STATUS_TABLE_NAME)
+    status_table.load()  # Test if table exists  
+    logger.info(f"✅ Connected to real DynamoDB status table: {STATUS_TABLE_NAME}")
+except Exception as e:
+    logger.warning(f"Status table {STATUS_TABLE_NAME} not accessible: {e}")
+    status_table = MockTable(STATUS_TABLE_NAME)
 
 def ensure_cache_table_exists():
-    logger.info("Mock cache table ensured")
+    """Ensure cache table exists"""
     return cache_table
 
 def ensure_status_table_exists():
-    logger.info("Mock status table ensured")
+    """Ensure status table exists"""
     return status_table
+
+logger.info("✅ AWS clients initialized - ready for Bedrock integration")
