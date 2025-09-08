@@ -246,15 +246,22 @@ class DynamicUseCaseGenerator:
                 name = re.sub(r'\s+', ' ', name).strip()
                 description = re.sub(r'\s+', ' ', description).strip()
                 
-                # Create structured use case
+                # Create structured use case with correct parameters
                 structured_use_case = UseCaseStructured(
-                    id=f"uc_{i+1:02d}",
-                    name=name,
-                    description=description,
-                    business_impact="High",
-                    implementation_complexity="Medium",
-                    timeline="6-12 months",
-                    category="Business Transformation"
+                    title=name,
+                    category="Business Transformation",
+                    current_state="Current operational challenges requiring strategic transformation",
+                    proposed_solution=description,
+                    primary_aws_services=["Amazon CloudWatch", "AWS Lambda", "Amazon S3", "Amazon EC2"],
+                    business_value="High strategic value with measurable ROI and competitive advantage",
+                    implementation_phases=["Planning & Assessment", "Development", "Testing & Validation", "Deployment & Optimization"],
+                    timeline_months=8,
+                    monthly_cost_usd=15000,
+                    complexity="Medium",
+                    priority="High",
+                    risk_level="Medium",
+                    success_metrics=["Cost reduction", "Process efficiency", "User satisfaction", "Revenue growth"],
+                    dynamic_id=f"uc_{i+1:02d}"
                 )
                 
                 use_cases.append(structured_use_case)
@@ -285,49 +292,84 @@ class DynamicUseCaseGenerator:
 
         fallback_use_cases = [
             UseCaseStructured(
-                id="uc_01",
-                name=f"Cloud Infrastructure Modernization for {company_profile.name}",
-                description=f"Modernize {company_profile.name}'s technology infrastructure through cloud adoption, enabling scalable operations, improved performance, and cost optimization. This transformation includes migrating legacy systems, implementing DevOps practices, and establishing automated deployment pipelines{enhancement_note}.",
-                business_impact="High",
-                implementation_complexity="Medium",
-                timeline="6-12 months",
-                category="Infrastructure Transformation"
+                title=f"Cloud Infrastructure Modernization for {company_profile.name}",
+                category="Infrastructure Transformation",
+                current_state="Legacy infrastructure with limited scalability, high maintenance costs, and operational inefficiencies",
+                proposed_solution=f"Modernize {company_profile.name}'s technology infrastructure through cloud adoption, enabling scalable operations, improved performance, and cost optimization. This transformation includes migrating legacy systems, implementing DevOps practices, and establishing automated deployment pipelines{enhancement_note}.",
+                primary_aws_services=["Amazon EC2", "AWS CloudFormation", "Amazon RDS", "AWS Lambda", "Amazon CloudWatch"],
+                business_value="30-40% cost reduction, improved scalability, and enhanced operational efficiency",
+                implementation_phases=["Infrastructure Assessment", "Migration Planning", "Cloud Migration", "Optimization & Scaling"],
+                timeline_months=8,
+                monthly_cost_usd=25000,
+                complexity="Medium",
+                priority="High",
+                risk_level="Medium",
+                success_metrics=["Infrastructure cost reduction", "System uptime improvement", "Deployment speed", "Scalability metrics"],
+                dynamic_id="uc_01"
             ),
             UseCaseStructured(
-                id="uc_02",
-                name=f"Data Analytics and Business Intelligence Platform",
-                description=f"Implement a comprehensive data analytics platform for {company_profile.name} to enable data-driven decision making, predictive insights, and operational optimization. This includes data integration, real-time dashboards, and machine learning capabilities{enhancement_note}.",
-                business_impact="High",
-                implementation_complexity="Medium",
-                timeline="4-8 months",
-                category="Data Transformation"
+                title=f"Data Analytics and Business Intelligence Platform",
+                category="Data Transformation",
+                current_state="Fragmented data sources with limited analytics capabilities and manual reporting processes",
+                proposed_solution=f"Implement a comprehensive data analytics platform for {company_profile.name} to enable data-driven decision making, predictive insights, and operational optimization. This includes data integration, real-time dashboards, and machine learning capabilities{enhancement_note}.",
+                primary_aws_services=["Amazon Redshift", "AWS Glue", "Amazon QuickSight", "Amazon SageMaker", "AWS Lambda"],
+                business_value="25-35% improvement in decision-making speed and data-driven insights",
+                implementation_phases=["Data Assessment", "Platform Design", "Data Integration", "Analytics Implementation"],
+                timeline_months=6,
+                monthly_cost_usd=18000,
+                complexity="Medium",
+                priority="High",
+                risk_level="Low",
+                success_metrics=["Data processing speed", "Report generation time", "Decision accuracy", "User adoption"],
+                dynamic_id="uc_02"
             ),
             UseCaseStructured(
-                id="uc_03",
-                name=f"Process Automation and Workflow Optimization",
-                description=f"Automate key business processes for {company_profile.name} to reduce manual effort, improve accuracy, and accelerate operations. This includes workflow automation, document processing, and intelligent task routing{enhancement_note}.",
-                business_impact="Medium",
-                implementation_complexity="Low",
-                timeline="3-6 months",
-                category="Process Transformation"
+                title=f"Process Automation and Workflow Optimization",
+                category="Process Transformation",
+                current_state="Manual processes causing inefficiencies, errors, and delayed operations",
+                proposed_solution=f"Automate key business processes for {company_profile.name} to reduce manual effort, improve accuracy, and accelerate operations. This includes workflow automation, document processing, and intelligent task routing{enhancement_note}.",
+                primary_aws_services=["AWS Step Functions", "AWS Lambda", "Amazon Textract", "Amazon Comprehend"],
+                business_value="40-50% reduction in manual processing time and improved accuracy",
+                implementation_phases=["Process Analysis", "Automation Design", "Implementation", "Optimization"],
+                timeline_months=4,
+                monthly_cost_usd=12000,
+                complexity="Low",
+                priority="Medium",
+                risk_level="Low",
+                success_metrics=["Process efficiency", "Error reduction", "Time savings", "Employee satisfaction"],
+                dynamic_id="uc_03"
             ),
             UseCaseStructured(
-                id="uc_04",
-                name=f"Digital Customer Experience Enhancement",
-                description=f"Transform customer interactions for {company_profile.name} through digital channels, self-service capabilities, and personalized experiences. This includes mobile applications, customer portals, and omnichannel support{enhancement_note}.",
-                business_impact="High",
-                implementation_complexity="Medium",
-                timeline="6-9 months",
-                category="Customer Experience"
+                title=f"Digital Customer Experience Enhancement",
+                category="Customer Experience",
+                current_state="Limited digital touchpoints and fragmented customer interactions",
+                proposed_solution=f"Transform customer interactions for {company_profile.name} through digital channels, self-service capabilities, and personalized experiences. This includes mobile applications, customer portals, and omnichannel support{enhancement_note}.",
+                primary_aws_services=["Amazon API Gateway", "AWS Amplify", "Amazon Cognito", "Amazon Personalize"],
+                business_value="20-30% improvement in customer satisfaction and engagement",
+                implementation_phases=["Customer Journey Mapping", "Platform Development", "Testing", "Launch & Optimization"],
+                timeline_months=7,
+                monthly_cost_usd=20000,
+                complexity="Medium",
+                priority="High",
+                risk_level="Medium",
+                success_metrics=["Customer satisfaction", "Digital engagement", "Self-service adoption", "Support efficiency"],
+                dynamic_id="uc_04"
             ),
             UseCaseStructured(
-                id="uc_05",
-                name=f"Security and Compliance Framework",
-                description=f"Establish comprehensive security and compliance capabilities for {company_profile.name} to protect assets, ensure regulatory adherence, and build customer trust. This includes security monitoring, compliance automation, and risk management{enhancement_note}.",
-                business_impact="High",
-                implementation_complexity="Medium",
-                timeline="4-6 months",
-                category="Security Transformation"
+                title=f"Security and Compliance Framework",
+                category="Security Transformation",
+                current_state="Fragmented security measures with compliance gaps and manual monitoring",
+                proposed_solution=f"Establish comprehensive security and compliance capabilities for {company_profile.name} to protect assets, ensure regulatory adherence, and build customer trust. This includes security monitoring, compliance automation, and risk management{enhancement_note}.",
+                primary_aws_services=["AWS Security Hub", "Amazon GuardDuty", "AWS Config", "AWS CloudTrail"],
+                business_value="Risk reduction and compliance assurance with cost-effective security posture",
+                implementation_phases=["Security Assessment", "Framework Design", "Implementation", "Monitoring & Maintenance"],
+                timeline_months=5,
+                monthly_cost_usd=16000,
+                complexity="Medium",
+                priority="High",
+                risk_level="Low",
+                success_metrics=["Security incidents reduction", "Compliance score", "Response time", "Risk mitigation"],
+                dynamic_id="uc_05"
             )
         ]
         
