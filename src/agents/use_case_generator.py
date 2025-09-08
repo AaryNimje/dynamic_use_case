@@ -56,42 +56,19 @@ class DynamicUseCaseGenerator:
 
                 When provided with custom context, requirements, or specific focus areas, prioritize use cases that directly address those needs and align with the specified priorities.
 
-                When provided with web-scraped content and company document content, use this as primary intelligence to understand their current operations, processes, and strategic context.
+                MANDATORY XML FORMATTING REQUIREMENTS:
+                1. You MUST use exactly these XML tag formats for each use case:
+                   <use_case>
+                   <n>Use Case Name</n>
+                   <description>Comprehensive description</description>
+                   </use_case>
 
-                CRITICAL: You have COMPLETE FREEDOM to create personalized use cases based on:
-                - Custom context and specific requirements provided
-                - Web-scraped market intelligence and industry insights
-                - Company-specific context from research and documents
-                - Industry dynamics and market opportunities
-                - Actual business challenges and operational needs
-                - Strategic priorities and growth objectives
-
-                MANDATORY RESPONSE FORMAT: Use XML-like tags for easy parsing with proper formatting:
-
-                <usecase>
-                <id>business-transformation-initiative-[number]</id>
-                <name>Strategic Business Transformation Name</name>
-                <description>Comprehensive description of the transformation initiative including problem statement, solution approach, and expected outcomes. This should be detailed and explain the business context clearly.</description>
-                <category>Business Transformation Category</category>
-                <current_state>Current business situation and challenges</current_state>
-                <proposed_solution>Strategic transformation solution with technology enablers</proposed_solution>
-                <aws_services>Service1,Service2,Service3,Service4,Service5</aws_services>
-                <business_value>Quantifiable business value and strategic impact</business_value>
-                <implementation_phases>Phase1,Phase2,Phase3,Phase4</implementation_phases>
-                <timeline_months>6</timeline_months>
-                <monthly_cost_usd>5000</monthly_cost_usd>
-                <complexity>Low/Medium/High</complexity>
-                <priority>Low/Medium/High/Critical</priority>
-                <risk_level>Low/Medium/High</risk_level>
-                <success_metrics>BusinessMetric1,BusinessMetric2,BusinessMetric3</success_metrics>
-                </usecase>
-
-                CRITICAL REQUIREMENTS:
-                1. The <name> tag must contain a clear, concise use case name
-                2. The <description> tag must contain a comprehensive description that explains the business context and transformation approach
-                3. Use proper XML formatting with matching opening and closing tags
-                4. Generate comprehensive, business-focused transformation initiatives that address real challenges
-                5. Each use case should create measurable business value and competitive advantage
+                2. Each use case MUST be enclosed in proper <use_case></use_case> tags
+                3. The <n> tag must contain a concise, professional use case name
+                4. The <description> tag must contain a comprehensive description that explains the business context and transformation approach
+                5. Use proper XML formatting with matching opening and closing tags
+                6. Generate comprehensive, business-focused transformation initiatives that address real challenges
+                7. Each use case should create measurable business value and competitive advantage
 
                 Generate comprehensive transformation initiatives that demonstrate deep industry knowledge and provide practical solutions.
             """,
@@ -107,7 +84,7 @@ class DynamicUseCaseGenerator:
         
         if status_tracker:
             status_tracker.update_status(
-                StatusCheckpoints.USE_CASES_GENERATING,
+                StatusCheckpoints.USE_CASE_GENERATION_STARTED,
                 {
                     'phase': 'transformation_analysis', 
                     'company': company_profile.name, 
@@ -131,61 +108,70 @@ class DynamicUseCaseGenerator:
 
                 Use this market intelligence to create use cases that are aligned with current industry trends and competitive dynamics.
             """
-        
-        # Create contextual file content section
-        file_context_section = ""
+
+        file_content_section = ""
         if parsed_files_content:
-            file_context_section = f"""
+            file_content_section = f"""
         
-                COMPANY INTERNAL DOCUMENTATION ANALYSIS:
-                The following content was extracted from company documents:
+                DOCUMENT INTELLIGENCE ANALYSIS:
+                Based on analysis of uploaded company documents:
 
                 {parsed_files_content[:3000]}
 
-                Use this as primary intelligence to create HIGHLY PERSONALIZED use cases that address their specific operational realities and business challenges.
+                Use this internal company intelligence to create use cases that are specifically aligned with their documented processes, capabilities, and strategic direction.
             """
+
+        custom_context_section = ""
+        if custom_context and custom_context.get('processed_prompt'):
+            custom_context_section = f"""
         
-        # Base generation prompt
-        base_generation_prompt = f"""
-                STRATEGIC BUSINESS TRANSFORMATION ANALYSIS FOR {company_profile.name}
-
-                You are designing PERSONALIZED transformation initiatives that solve {company_profile.name}'s specific business challenges and accelerate their strategic objectives.
-
-                COMPANY BUSINESS PROFILE:
-                Company Name: {company_profile.name}
-                Industry & Market: {company_profile.industry}
-                Business Model: {company_profile.business_model}
-                Operational Scale: {company_profile.company_size}
-                Technology Maturity: {company_profile.cloud_maturity}
-                Growth Stage: {company_profile.growth_stage}
+                CUSTOM CONTEXT INTEGRATION:
+                {custom_context['processed_prompt'][:2000]}
                 
-                Technology Capabilities: {', '.join(company_profile.technology_stack)}
-                Strategic Challenges: {', '.join(company_profile.primary_challenges)}
-                Compliance Context: {', '.join(company_profile.compliance_requirements)}
-
-                BUSINESS INTELLIGENCE FROM RESEARCH:
-                {research_data.get('research_findings', '')[:2000]}
-                {web_context_section}
-                {file_context_section}
-
-                TRANSFORMATION MISSION:
-                Design 10 strategic transformation use cases that address real business challenges:
-
-                1. **Core Business Optimization**: Process efficiency and operational excellence
-                2. **Customer Experience Enhancement**: Service delivery and satisfaction
-                3. **Data-Driven Decision Making**: Analytics and business intelligence
-                4. **Innovation Acceleration**: Technology-enabled competitive advantage
-                5. **Security and Compliance**: Risk management and governance
-                6. **Cost Optimization**: Resource efficiency and financial performance
-                7. **Scalability and Growth**: Infrastructure and capacity planning
-                8. **Automation and Workflow**: Process improvement and productivity
-                9. **Strategic Analytics**: Market intelligence and forecasting
-                10. **Digital Transformation**: Platform modernization and capabilities
-
-                MANDATORY: Use XML tag format with proper <name> and <description> tags for each transformation use case.
-                Create solutions that drive measurable business value and competitive advantage.
-                Each use case must have a clear name and comprehensive description.
+                Focus Areas: {', '.join(custom_context.get('focus_areas', []))}
+                Context Type: {custom_context.get('context_type', 'general')}
+                
+                MANDATORY: All use cases must align with this custom context and prioritize the specified focus areas.
             """
+
+        # Enhanced business-focused use case generation prompt
+        base_generation_prompt = f"""
+            Generate strategic business transformation use cases for {company_profile.name}, leveraging comprehensive market intelligence and company analysis.
+
+            COMPANY PROFILE:
+            - Industry: {company_profile.industry}
+            - Business Model: {company_profile.business_model}
+            - Company Size: {company_profile.company_size}
+            - Technology Stack: {', '.join(company_profile.technology_stack)}
+            - Primary Challenges: {', '.join(company_profile.primary_challenges)}
+            - Growth Stage: {company_profile.growth_stage}
+
+            COMPREHENSIVE BUSINESS RESEARCH:
+            {research_data.get('research_findings', 'Standard business analysis')[:4000]}
+            {web_context_section}
+            {file_content_section}
+            {custom_context_section}
+
+            MANDATORY REQUIREMENTS:
+            1. Generate 8-12 distinct transformation use cases using proper XML formatting
+            2. Each use case must address real business challenges and create measurable value
+            3. Focus on business outcomes, not just technology implementation
+            4. Use cases should span these strategic transformation areas:
+                **Cloud Infrastructure**: Platform modernization and scalability
+                **Data & Analytics**: Intelligence-driven decision making and insights
+                **Process Automation**: Workflow optimization and efficiency gains
+                **Customer Experience**: Digital engagement and satisfaction improvements
+                **Security & Compliance**: Risk management and regulatory adherence
+                **Innovation & Growth**: New capability development and market expansion
+                **Operational Excellence**: Performance optimization and cost management
+                **Digital Transformation**: Technology-enabled business evolution
+                **Strategic Analytics**: Market intelligence and forecasting
+                **Competitive Advantage**: Differentiation and market positioning
+
+            MANDATORY: Use XML tag format with proper <n> and <description> tags for each transformation use case.
+            Create solutions that drive measurable business value and competitive advantage.
+            Each use case must have a clear name and comprehensive description.
+        """
         
         # Integrate custom context if provided
         if custom_context and custom_context.get('processed_prompt'):
@@ -240,320 +226,110 @@ class DynamicUseCaseGenerator:
         
         use_cases = []
         
-        try:
-            # Find all use case blocks
-            use_case_pattern = r'<usecase>(.*?)</usecase>'
-            use_case_matches = re.findall(use_case_pattern, response_text, re.DOTALL | re.IGNORECASE)
-            
-            logger.info(f"Found {len(use_case_matches)} use case blocks in response")
-            
-            for i, use_case_block in enumerate(use_case_matches):
-                try:
-                    use_case = self._parse_single_xml_use_case(use_case_block, company_profile, i)
-                    if use_case:
-                        use_cases.append(use_case)
-                        logger.info(f"Successfully parsed use case: {use_case.title}")
-                except Exception as e:
-                    logger.error(f"Error parsing use case block {i}: {e}")
-                    continue
-            
-            # If we got some but not enough, supplement with additional generation
-            if len(use_cases) < 5:
-                logger.info(f"Only parsed {len(use_cases)} use cases, supplementing")
-                supplements = self._generate_supplemental_use_cases(company_profile, len(use_cases))
-                use_cases.extend(supplements)
-            
-        except Exception as e:
-            logger.error(f"Error in XML parsing: {e}")
-            return []
+        # Extract all use_case blocks
+        use_case_pattern = r'<use_case>(.*?)</use_case>'
+        use_case_matches = re.findall(use_case_pattern, response_text, re.DOTALL)
         
-        return use_cases[:10]  # Limit to 10 use cases
-
-    def _parse_single_xml_use_case(self, use_case_block: str, company_profile: CompanyProfile, index: int) -> Optional[UseCaseStructured]:
-        """Parse a single XML-formatted use case with proper name and description extraction."""
+        logger.info(f"Found {len(use_case_matches)} use case blocks in response")
         
-        def extract_tag_content(tag_name: str, content: str, default: str = "") -> str:
-            pattern = rf'<{tag_name}>(.*?)</{tag_name}>'
-            match = re.search(pattern, content, re.DOTALL | re.IGNORECASE)
-            if match:
-                return match.group(1).strip()
-            return default
+        for i, use_case_block in enumerate(use_case_matches):
+            try:
+                # Extract name
+                name_match = re.search(r'<n>(.*?)</n>', use_case_block, re.DOTALL)
+                name = name_match.group(1).strip() if name_match else f"Transformation Initiative {i+1}"
+                
+                # Extract description
+                desc_match = re.search(r'<description>(.*?)</description>', use_case_block, re.DOTALL)
+                description = desc_match.group(1).strip() if desc_match else f"Strategic transformation opportunity for {company_profile.name}"
+                
+                # Clean up text
+                name = re.sub(r'\s+', ' ', name).strip()
+                description = re.sub(r'\s+', ' ', description).strip()
+                
+                # Create structured use case
+                structured_use_case = UseCaseStructured(
+                    id=f"uc_{i+1:02d}",
+                    name=name,
+                    description=description,
+                    business_impact="High",
+                    implementation_complexity="Medium",
+                    timeline="6-12 months",
+                    category="Business Transformation"
+                )
+                
+                use_cases.append(structured_use_case)
+                logger.info(f"Parsed use case {i+1}: {name[:50]}...")
+                
+            except Exception as e:
+                logger.warning(f"Error parsing use case {i+1}: {e}")
+                continue
         
-        def extract_list_content(tag_name: str, content: str, default: List[str] = None) -> List[str]:
-            if default is None:
-                default = []
-            tag_content = extract_tag_content(tag_name, content)
-            if tag_content:
-                return [item.strip() for item in tag_content.split(',') if item.strip()]
-            return default
-        
-        def extract_int_content(tag_name: str, content: str, default: int) -> int:
-            tag_content = extract_tag_content(tag_name, content)
-            if tag_content:
-                try:
-                    return int(re.search(r'\d+', tag_content).group())
-                except:
-                    pass
-            return default
-        
-        try:
-            # Extract all fields with proper name and description handling
-            use_case_id = extract_tag_content('id', use_case_block, f"business-transformation-{index}")
-            
-            # Extract name and description properly
-            name = extract_tag_content('name', use_case_block, "")
-            description = extract_tag_content('description', use_case_block, "")
-            
-            # Use name as title, fallback to generated title if empty
-            title = name if name and len(name.strip()) > 0 else f"Business Transformation Initiative {index+1}"
-            
-            # Use description as proposed solution if available
-            category = extract_tag_content('category', use_case_block, "Business Optimization")
-            current_state = extract_tag_content('current_state', use_case_block, "Current business processes with optimization opportunities")
-            
-            # Use description as proposed solution if available, otherwise use proposed_solution tag
-            if description and len(description.strip()) > 0:
-                proposed_solution = description
-            else:
-                proposed_solution = extract_tag_content('proposed_solution', use_case_block, "Strategic transformation solution with technology enablers")
-            
-            aws_services = extract_list_content('aws_services', use_case_block, ['Lambda', 'S3', 'CloudWatch'])
-            business_value = extract_tag_content('business_value', use_case_block, "Enhanced business performance and competitive advantage")
-            implementation_phases = extract_list_content('implementation_phases', use_case_block, 
-                                                         ['Assessment', 'Design', 'Implementation', 'Optimization'])
-            timeline_months = extract_int_content('timeline_months', use_case_block, 6)
-            monthly_cost_usd = extract_int_content('monthly_cost_usd', use_case_block, 3000)
-            complexity = extract_tag_content('complexity', use_case_block, 'Medium')
-            priority = extract_tag_content('priority', use_case_block, 'High')
-            risk_level = extract_tag_content('risk_level', use_case_block, 'Medium')
-            success_metrics = extract_list_content('success_metrics', use_case_block, 
-                                                   ['Business Performance', 'Cost Reduction', 'Efficiency Improvement'])
-            
-            # Validate required fields
-            if not title or len(title) < 5:
-                logger.warning(f"Use case {index} has invalid title: {title}")
-                title = f"Business Transformation Initiative {index+1}"
-            
-            if not proposed_solution or len(proposed_solution) < 10:
-                logger.warning(f"Use case {index} has invalid description/proposed_solution")
-                proposed_solution = "Strategic transformation solution with technology enablers to drive business value"
-            
-            # Create structured use case
-            structured_use_case = UseCaseStructured(
-                title=title,
-                category=category,
-                current_state=current_state,
-                proposed_solution=proposed_solution,
-                primary_aws_services=aws_services[:7],
-                business_value=business_value,
-                implementation_phases=implementation_phases[:6],
-                timeline_months=max(1, min(timeline_months, 24)),
-                monthly_cost_usd=max(500, min(monthly_cost_usd, 50000)),
-                complexity=complexity if complexity in ['Low', 'Medium', 'High'] else 'Medium',
-                priority=priority if priority in ['Low', 'Medium', 'High', 'Critical'] else 'High',
-                risk_level=risk_level if risk_level in ['Low', 'Medium', 'High'] else 'Medium',
-                success_metrics=success_metrics[:5]
-            )
-            
-            # Add dynamic ID attribute
-            structured_use_case.dynamic_id = use_case_id
-            
-            logger.info(f"Parsed use case with name: '{title}' and description length: {len(proposed_solution)}")
-            
-            return structured_use_case
-            
-        except Exception as e:
-            logger.error(f"Error parsing single use case: {e}")
-            return None
-
-    def _generate_supplemental_use_cases(self, company_profile: CompanyProfile, current_count: int) -> List[UseCaseStructured]:
-        """Generate supplemental use cases when parsing yields insufficient results."""
-        
-        supplements = []
-        
-        # Define business-focused supplemental use cases with proper names and descriptions
-        business_supplements = [
-            {
-                'name': 'Advanced Business Intelligence and Analytics Platform',
-                'description': 'Implement a comprehensive business intelligence platform that consolidates data from multiple sources to provide real-time insights and predictive analytics. This initiative will enable data-driven decision making across all departments, improve operational efficiency, and identify new revenue opportunities through advanced analytics capabilities.',
-                'category': 'Data Analytics',
-                'current_state': 'Limited data insights and analytics capabilities',
-                'aws_services': ['Redshift', 'QuickSight', 'Glue', 'SageMaker'],
-                'business_value': 'Data-driven decision making and strategic insights',
-                'implementation_phases': ['Data Strategy', 'Platform Setup', 'Analytics Development', 'Training'],
-                'timeline_months': 8,
-                'monthly_cost_usd': 4000,
-                'complexity': 'High',
-                'priority': 'High',
-                'risk_level': 'Medium',
-                'success_metrics': ['Data Utilization', 'Decision Speed', 'Insight Generation']
-            },
-            {
-                'name': 'Customer Experience Optimization and Personalization',
-                'description': 'Develop a unified customer experience platform that integrates all customer touchpoints and provides personalized interactions based on customer behavior and preferences. This solution will improve customer satisfaction, increase retention rates, and drive revenue growth through enhanced customer engagement.',
-                'category': 'Customer Experience',
-                'current_state': 'Fragmented customer touchpoints and limited personalization',
-                'aws_services': ['Personalize', 'Pinpoint', 'Connect', 'Comprehend'],
-                'business_value': 'Improved customer satisfaction and retention',
-                'implementation_phases': ['Journey Mapping', 'Platform Setup', 'Personalization', 'Optimization'],
-                'timeline_months': 6,
-                'monthly_cost_usd': 3500,
-                'complexity': 'Medium',
-                'priority': 'High',
-                'risk_level': 'Low',
-                'success_metrics': ['Customer Satisfaction', 'Retention Rate', 'Engagement Score']
-            },
-            {
-                'name': 'Intelligent Process Automation and Workflow Optimization',
-                'description': 'Implement intelligent automation across key business processes to reduce manual effort, minimize errors, and improve operational efficiency. This initiative will streamline workflows, reduce operational costs, and enable employees to focus on higher-value activities that drive business growth.',
-                'category': 'Process Automation',
-                'current_state': 'Manual processes causing inefficiencies and errors',
-                'aws_services': ['Step Functions', 'Lambda', 'API Gateway', 'SQS'],
-                'business_value': 'Reduced operational costs and improved accuracy',
-                'implementation_phases': ['Process Analysis', 'Automation Design', 'Implementation', 'Monitoring'],
-                'timeline_months': 5,
-                'monthly_cost_usd': 2500,
-                'complexity': 'Medium',
-                'priority': 'Critical',
-                'risk_level': 'Medium',
-                'success_metrics': ['Process Efficiency', 'Error Reduction', 'Cost Savings']
-            }
-        ]
-        
-        needed_count = max(0, 8 - current_count)
-        
-        for i in range(min(needed_count, len(business_supplements))):
-            supplement_data = business_supplements[i]
-            
-            supplement = UseCaseStructured(
-                title=supplement_data['name'],
-                category=supplement_data['category'],
-                current_state=supplement_data['current_state'],
-                proposed_solution=supplement_data['description'],
-                primary_aws_services=supplement_data['aws_services'],
-                business_value=supplement_data['business_value'],
-                implementation_phases=supplement_data['implementation_phases'],
-                timeline_months=supplement_data['timeline_months'],
-                monthly_cost_usd=supplement_data['monthly_cost_usd'],
-                complexity=supplement_data['complexity'],
-                priority=supplement_data['priority'],
-                risk_level=supplement_data['risk_level'],
-                success_metrics=supplement_data['success_metrics']
-            )
-            
-            # Add dynamic ID
-            supplement.dynamic_id = f"business-transformation-supplement-{current_count + i + 1}"
-            supplements.append(supplement)
-        
-        return supplements
+        logger.info(f"Successfully parsed {len(use_cases)} use cases from XML response")
+        return use_cases
 
     def _generate_fallback_use_cases(self, company_profile: CompanyProfile, research_data: Dict[str, Any], 
-                                   parsed_files_content: str = None,
-                                   custom_context: Dict[str, str] = None) -> List[UseCaseStructured]:
-        """Generate fallback use cases when primary generation fails."""
+                                   parsed_files_content: str = None, custom_context: Dict[str, str] = None) -> List[UseCaseStructured]:
+        """Generate fallback use cases with web scraping, custom context and file content integration."""
         
-        logger.info(f"Generating fallback use cases for {company_profile.name}")
+        logger.info(f"Generating fallback transformation use cases for {company_profile.name}")
         
-        fallback_use_cases = []
-        
-        # Base fallback use cases with proper names and descriptions
-        fallback_templates = [
-            {
-                'name': 'Digital Platform Modernization and Cloud Migration',
-                'description': 'Modernize legacy systems and migrate to cloud-native architecture to improve agility, scalability, and operational efficiency. This comprehensive transformation will enable faster feature deployment, better system reliability, and reduced operational costs while positioning the organization for future growth.',
-                'category': 'Platform Modernization',
-                'current_state': 'Legacy systems limiting business agility and innovation',
-                'aws_services': ['ECS', 'API Gateway', 'Lambda', 'RDS', 'CloudFront'],
-                'business_value': 'Improved agility, scalability, and time-to-market',
-                'implementation_phases': ['Platform Assessment', 'Architecture Design', 'Migration', 'Optimization'],
-                'timeline_months': 10,
-                'monthly_cost_usd': 6000,
-                'complexity': 'High',
-                'priority': 'Critical',
-                'risk_level': 'Medium',
-                'success_metrics': ['System Performance', 'Deployment Speed', 'User Satisfaction']
-            },
-            {
-                'name': 'Enterprise Data Analytics and Business Intelligence',
-                'description': 'Establish a comprehensive data analytics platform that provides real-time insights and predictive analytics capabilities. This initiative will enable data-driven decision making, improve operational efficiency, and identify new business opportunities through advanced analytics and machine learning.',
-                'category': 'Data Analytics',
-                'current_state': 'Limited data insights affecting strategic decision making',
-                'aws_services': ['Redshift', 'QuickSight', 'Kinesis', 'Glue', 'SageMaker'],
-                'business_value': 'Data-driven decisions and competitive intelligence',
-                'implementation_phases': ['Data Strategy', 'Platform Setup', 'Analytics Development', 'Training'],
-                'timeline_months': 8,
-                'monthly_cost_usd': 4500,
-                'complexity': 'High',
-                'priority': 'High',
-                'risk_level': 'Medium',
-                'success_metrics': ['Data Utilization', 'Decision Speed', 'Business Insights']
-            },
-            {
-                'name': 'Comprehensive Security and Compliance Framework',
-                'description': 'Implement a robust security framework with automated compliance monitoring and threat detection capabilities. This initiative will enhance security posture, ensure regulatory compliance, and provide continuous monitoring and response capabilities to protect business assets and customer data.',
-                'category': 'Security & Compliance',
-                'current_state': 'Security gaps and compliance challenges',
-                'aws_services': ['Security Hub', 'Config', 'GuardDuty', 'Inspector', 'CloudTrail'],
-                'business_value': 'Enhanced security posture and regulatory compliance',
-                'implementation_phases': ['Security Assessment', 'Framework Design', 'Implementation', 'Monitoring'],
-                'timeline_months': 6,
-                'monthly_cost_usd': 3500,
-                'complexity': 'Medium',
-                'priority': 'Critical',
-                'risk_level': 'Low',
-                'success_metrics': ['Security Score', 'Compliance Rating', 'Incident Reduction']
-            },
-            {
-                'name': 'Unified Customer Experience Platform',
-                'description': 'Create a unified customer experience platform that integrates all customer touchpoints and provides personalized interactions through AI-powered recommendations and real-time engagement capabilities. This solution will improve customer satisfaction, increase retention, and drive revenue growth.',
-                'category': 'Customer Experience',
-                'current_state': 'Fragmented customer interactions and limited personalization',
-                'aws_services': ['Personalize', 'Pinpoint', 'Connect', 'Comprehend', 'Lex'],
-                'business_value': 'Improved customer satisfaction and increased retention',
-                'implementation_phases': ['Journey Mapping', 'Platform Setup', 'Personalization', 'Optimization'],
-                'timeline_months': 7,
-                'monthly_cost_usd': 4000,
-                'complexity': 'Medium',
-                'priority': 'High',
-                'risk_level': 'Low',
-                'success_metrics': ['Customer Satisfaction', 'Retention Rate', 'Engagement Score']
-            },
-            {
-                'name': 'Intelligent Process Automation and Workflow Optimization',
-                'description': 'Implement intelligent process automation across key business workflows to reduce manual effort, minimize errors, and improve operational efficiency. This initiative will streamline operations, reduce costs, and enable employees to focus on higher-value strategic activities.',
-                'category': 'Process Automation',
-                'current_state': 'Manual processes causing inefficiencies and errors',
-                'aws_services': ['Step Functions', 'Lambda', 'API Gateway', 'SQS', 'EventBridge'],
-                'business_value': 'Reduced operational costs and improved accuracy',
-                'implementation_phases': ['Process Analysis', 'Automation Design', 'Implementation', 'Monitoring'],
-                'timeline_months': 5,
-                'monthly_cost_usd': 2800,
-                'complexity': 'Medium',
-                'priority': 'High',
-                'risk_level': 'Medium',
-                'success_metrics': ['Process Efficiency', 'Error Reduction', 'Cost Savings']
-            }
+        # Enhanced fallback use cases with web scraping and custom context awareness
+        enhancement_note = ""
+        if research_data.get('web_research_data'):
+            enhancement_note += f" (Enhanced with web intelligence from {research_data['web_research_data'].get('successful_scrapes', 0)} sources)"
+        if parsed_files_content:
+            enhancement_note += " (Enhanced with document analysis)"
+        if custom_context and custom_context.get('processed_prompt'):
+            focus_areas = ', '.join(custom_context.get('focus_areas', []))
+            enhancement_note += f" (Customized for {custom_context.get('context_type', 'general')} focus: {focus_areas})"
+
+        fallback_use_cases = [
+            UseCaseStructured(
+                id="uc_01",
+                name=f"Cloud Infrastructure Modernization for {company_profile.name}",
+                description=f"Modernize {company_profile.name}'s technology infrastructure through cloud adoption, enabling scalable operations, improved performance, and cost optimization. This transformation includes migrating legacy systems, implementing DevOps practices, and establishing automated deployment pipelines{enhancement_note}.",
+                business_impact="High",
+                implementation_complexity="Medium",
+                timeline="6-12 months",
+                category="Infrastructure Transformation"
+            ),
+            UseCaseStructured(
+                id="uc_02",
+                name=f"Data Analytics and Business Intelligence Platform",
+                description=f"Implement a comprehensive data analytics platform for {company_profile.name} to enable data-driven decision making, predictive insights, and operational optimization. This includes data integration, real-time dashboards, and machine learning capabilities{enhancement_note}.",
+                business_impact="High",
+                implementation_complexity="Medium",
+                timeline="4-8 months",
+                category="Data Transformation"
+            ),
+            UseCaseStructured(
+                id="uc_03",
+                name=f"Process Automation and Workflow Optimization",
+                description=f"Automate key business processes for {company_profile.name} to reduce manual effort, improve accuracy, and accelerate operations. This includes workflow automation, document processing, and intelligent task routing{enhancement_note}.",
+                business_impact="Medium",
+                implementation_complexity="Low",
+                timeline="3-6 months",
+                category="Process Transformation"
+            ),
+            UseCaseStructured(
+                id="uc_04",
+                name=f"Digital Customer Experience Enhancement",
+                description=f"Transform customer interactions for {company_profile.name} through digital channels, self-service capabilities, and personalized experiences. This includes mobile applications, customer portals, and omnichannel support{enhancement_note}.",
+                business_impact="High",
+                implementation_complexity="Medium",
+                timeline="6-9 months",
+                category="Customer Experience"
+            ),
+            UseCaseStructured(
+                id="uc_05",
+                name=f"Security and Compliance Framework",
+                description=f"Establish comprehensive security and compliance capabilities for {company_profile.name} to protect assets, ensure regulatory adherence, and build customer trust. This includes security monitoring, compliance automation, and risk management{enhancement_note}.",
+                business_impact="High",
+                implementation_complexity="Medium",
+                timeline="4-6 months",
+                category="Security Transformation"
+            )
         ]
         
-        for i, template in enumerate(fallback_templates):
-            use_case = UseCaseStructured(
-                title=template['name'],
-                category=template['category'],
-                current_state=template['current_state'],
-                proposed_solution=template['description'],
-                primary_aws_services=template['aws_services'],
-                business_value=template['business_value'],
-                implementation_phases=template['implementation_phases'],
-                timeline_months=template['timeline_months'],
-                monthly_cost_usd=template['monthly_cost_usd'],
-                complexity=template['complexity'],
-                priority=template['priority'],
-                risk_level=template['risk_level'],
-                success_metrics=template['success_metrics']
-            )
-            
-            # Add dynamic ID
-            use_case.dynamic_id = f"business-transformation-fallback-{i+1}"
-            fallback_use_cases.append(use_case)
-        
+        logger.info(f"Generated {len(fallback_use_cases)} fallback transformation use cases for {company_profile.name}")
         return fallback_use_cases
